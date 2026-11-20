@@ -1,3 +1,4 @@
+// server/api/wa/send-bulk.post.ts
 import { requireWaAuth } from '~/server/utils/waAuth'
 import {
   sessions,
@@ -27,25 +28,41 @@ export default defineEventHandler(async (event) => {
   const delayMs =
     typeof body?.delayMs === 'number' && body.delayMs >= 1000 ? body.delayMs : 5000
 
-  const session = sessions[sessionId]
-  const isReady = Boolean(session && session.status === 'connected' && session.sock)
-
-  if (!isReady) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: `Sesi '${sessionId}' belum terhubung ke WhatsApp.`,
-      data: {
-        sessionId,
-        status: session?.status || 'disconnected',
-        connected: false
-      }
-    })
-  }
-
   if (phones.length === 0 || !message) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Parameter "phones" (array nomor) dan "message" wajib diisi.'
+    })
+  }
+
+  const isSessionReady = (currentSession: typeof sessions[string] | undefined) => Boolean(
+    currentSession &&
+    currentSession.status === 'connected' &&
+    currentSession.connected &&
+    currentSession.sock &&
+    currentSession.sock.user
+  )
+
+  let session = sessions[sessionId]
+  if (session?.status === 'connecting') {
+    const connectionDeadline = Date.now() + 60_000
+    while (!isSessionReady(session) && session?.status === 'connecting' && Date.now() < connectionDeadline) {
+      await delay(500)
+      session = sessions[sessionId]
+    }
+  }
+
+  if (!isSessionReady(session)) {
+    throw createError({
+      statusCode: session?.status === 'connecting' ? 503 : 400,
+      statusMessage: `Sesi '${sessionId}' belum terhubung ke WhatsApp.`,
+      data: {
+        sessionId,
+        status: session?.sock
+          ? session.status
+          : (session?.status === 'connected' ? 'connecting' : (session?.status || 'disconnected')),
+        connected: false
+      }
     })
   }
 
@@ -59,7 +76,7 @@ export default defineEventHandler(async (event) => {
       const timestamp = new Date().toLocaleString('id-ID')
 
       const activeSock = sessions[sessionId]?.sock
-      if (!activeSock || sessions[sessionId]?.status !== 'connected') {
+      if (!activeSock || sessions[sessionId]?.status !== 'connected' || !sessions[sessionId]?.connected) {
         appendReportLog(senderPhone, {
           timestamp,
           sessionId,

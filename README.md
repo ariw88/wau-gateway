@@ -9,7 +9,7 @@ Folder proyek Nuxt 3 siap pakai untuk menjalankan WhatsApp Gateway multi-session
 - `server/plugins/waBoot.ts` — Auto-load sesi tersimpan saat server menyala.
 - `server/api/wa/status.get.ts` — Cek status koneksi & daftar sesi.
 - `server/api/wa/qr.post.ts` — Memulai sesi dan menghasilkan QR code (`data:image/png;base64,...`).
-- `server/api/wa/send-bulk.post.ts` — Mengirim pesan bulk di latar belakang dengan delay.
+- `server/api/wa/send-bulk.post.ts` — Mengirim pesan bulk di latar belakang dengan delay; menunggu sesi yang sedang menghubungkan hingga 60 detik.
 - `server/api/wa/report.get.ts` — Mengambil riwayat pengiriman per nomor pengirim.
 - `server/api/wa/logout.post.ts` — Logout & hapus kredensial sesi tertentu.
 
